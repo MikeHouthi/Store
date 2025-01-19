@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cửa Hàng Bán Hoa Quả</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: url('bg.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+        }
+        .product {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0.7); /* Tăng độ trong suốt */
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .product span {
+            flex: 2;
+        }
+        .product input {
+            width: 80px; /* Cố định chiều rộng */
+            text-align: center;
+            margin-right: 10px;
+        }
+        .product button {
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            flex: 1; /* Đảm bảo nút "Thêm" chiếm phần còn lại của không gian */
+        }
+        .product button:hover {
+            background-color: #0056b3;
+        }
+        #invoice, #inventory, .admin-panel {
+            background-color: rgba(255, 255, 255, 0.7); /* Tăng độ trong suốt */
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        #cart-items, #inventory-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        #cart-items li {
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #cart-items li button {
+            padding: 3px 7px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        #cart-items li button:hover {
+            background-color: #a71d2a;
+        }
+        #checkout-btn {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #checkout-btn:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cửa Hàng Bán Hoa Quả</h1>
+
+    <div id="products"></div>
+
+    <div id="invoice">
+        <h2>Hóa Đơn</h2>
+        <ul id="cart-items">
+            <li>Chưa có sản phẩm nào trong giỏ hàng.</li>
+        </ul>
+        <p><strong>Tổng cộng:</strong> <span id="total">0</span> VND</p>
+        <button id="checkout-btn" onclick="checkout()">Thanh Toán</button>
+    </div>
+
+    <div id="inventory">
+        <h2>Kho Hàng</h2>
+        <ul id="inventory-list">
+            <li>Chưa có hàng trong kho.</li>
+        </ul>
+    </div>
+
+    <div class="admin-panel">
+        <h2>Thêm hoặc Chỉnh sửa Mặt Hàng</h2>
+        <input type="text" id="product-name" placeholder="Tên sản phẩm">
+        <input type="number" id="product-price" placeholder="Giá (VND)">
+        <button onclick="addOrUpdateProduct()">Lưu</button>
+    </div>
+
+    <audio id="background-music" src="1.mp3" loop></audio>
+    <audio id="checkout-music" src="2.mp3"></audio>
+
+    <script>
+        const cart = {};
+        const inventory = {};
+        const products = {
+            'Táo': 10000,
+            'Chuối': 50000,
+            'Lê': 100000
+        };
+
+        const bgMusic = document.getElementById('background-music');
+        const checkoutMusic = document.getElementById('checkout-music');
+
+        function startMusic() {
+            bgMusic.play().catch(error => console.error("Lỗi phát nhạc:", error));
+            document.body.removeEventListener('click', startMusic);
+        }
+
+        document.body.addEventListener('click', startMusic);
+
+        function renderProducts() {
+            const productContainer = document.getElementById('products');
+            productContainer.innerHTML = '';
+
+            for (const [name, price] of Object.entries(products)) {
+                const productDiv = document.createElement('div');
+                productDiv.className = 'product';
+
+                productDiv.innerHTML = `
+                    <span>${name} (${price.toLocaleString()} VND/kg)</span>
+                    <input type="number" value="1" min="1" id="${name}-quantity">
+                    <button onclick="addToCart('${name}', ${price}, '${name}-quantity')">Thêm</button>
+                `;
+
+                productContainer.appendChild(productDiv);
+            }
+        }
+
+        function addToCart(product, price, quantityInputId) {
+            const quantity = parseInt(document.getElementById(quantityInputId).value);
+            if (!cart[product]) {
+                cart[product] = { quantity: 0, price: price };
+            }
+            cart[product].quantity += quantity;
+            updateInvoice();
+        }
+
+        function updateInvoice() {
+            const cartItems = document.getElementById('cart-items');
+            const totalElement = document.getElementById('total');
+            cartItems.innerHTML = '';
+            let total = 0;
+
+            for (const product in cart) {
+                const { quantity, price } = cart[product];
+                const itemTotal = quantity * price;
+                total += itemTotal;
+
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `
+                    <span>${product}: ${quantity} kg - ${itemTotal.toLocaleString()} VND</span>
+                    <button onclick="removeFromCart('${product}')">Xóa</button>
+                `;
+                cartItems.appendChild(listItem);
+            }
+
+            if (total === 0) {
+                cartItems.innerHTML = '<li>Chưa có sản phẩm nào trong giỏ hàng.</li>';
+            }
+
+            totalElement.textContent = total.toLocaleString();
+        }
+
+        function removeFromCart(product) {
+            delete cart[product];
+            updateInvoice();
+        }
+
+        function checkout() {
+            bgMusic.pause();
+            checkoutMusic.play();
+            alert('Cảm ơn bạn đã mua hàng!');
+
+            for (const product in cart) {
+                if (!inventory[product]) {
+                    inventory[product] = 0;
+                }
+                inventory[product] += cart[product].quantity;
+            }
+
+            for (const product in cart) delete cart[product];
+            updateInvoice();
+            updateInventory();
+        }
+
+        function updateInventory() {
+            const inventoryList = document.getElementById('inventory-list');
+            inventoryList.innerHTML = '';
+
+            for (const product in inventory) {
+                const quantity = inventory[product];
+                const listItem = document.createElement('li');
+                listItem.textContent = `${product}: ${quantity} kg`;
+                inventoryList.appendChild(listItem);
+            }
+
+            if (Object.keys(inventory).length === 0) {
+                inventoryList.innerHTML = '<li>Chưa có hàng trong kho.</li>';
+            }
+        }
+
+        function addOrUpdateProduct() {
+            const productName = document.getElementById('product-name').value;
+            const productPrice = parseInt(document.getElementById('product-price').value);
+
+            if (productName && productPrice > 0) {
+                products[productName] = productPrice;
+                renderProducts();
+            }
+        }
+
+        renderProducts();
+    </script>
+</body>
+</html>
